@@ -5,29 +5,25 @@ import logging
 from datetime import datetime
 import os
 import sys
+from db_config import DB_URI
 
-# ==============================
-# CONFIG
-# ==============================
 
-DB_URI = "postgresql+psycopg2://postgres:newpassword@127.0.0.1:5432/capstone2"
+
 CSV_FOLDER = "bronze_inputs/"
 LOG_FILE = "logs/etl.log"
 
 BRONZE_TABLES = {
-    "riders": "riders.csv",
-    "drivers": "drivers.csv",
-    "rides": "rides.csv",
-    "payments": "payments.csv",
-    "driver_shifts": "driver_shifts.csv"
+    "riders": "raw_riders.csv",
+    "drivers": "raw_drivers.csv",
+    "rides": "raw_rides.csv",
+    "payments": "raw_payments.csv",
+    "driver_shifts": "raw_driver_shifts.csv"
 }
 
 SILVER_SQL_PATH = "sql/silver"
 GOLD_SQL_PATH = "sql/gold"
 
-# ==============================
-# LOGGING SETUP
-# ==============================
+
 
 os.makedirs("logs", exist_ok=True)
 
@@ -37,15 +33,11 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(message)s"
 )
 
-# ==============================
-# DB CONNECTION
-# ==============================
+
 
 engine = create_engine(DB_URI)
 
-# ==============================
-# UTILITY
-# ==============================
+
 
 def run_sql_file(file_path):
     with open(file_path, "r") as f:
@@ -54,9 +46,7 @@ def run_sql_file(file_path):
     with engine.begin() as conn:
         conn.execute(text(sql))
 
-# ==============================
-# BRONZE LOAD
-# ==============================
+
 
 def load_bronze():
     logging.info("BRONZE LOAD STARTED")
@@ -101,17 +91,15 @@ def load_bronze():
             logging.info(
                 f"BRONZE | TABLE={table} | ROWS={rows} | CHECKSUM={checksum} | TIME={elapsed}"
             )
-            print(f"✅ Loaded bronze.{table}: {rows} rows")
+            print(f"Loaded bronze.{table}: {rows} rows")
 
         except Exception as e:
             logging.error(f"BRONZE | TABLE={table} | ERROR={str(e)}")
-            print(f"❌ Failed loading bronze.{table}: {e}")
+            print(f"Failed loading bronze.{table}: {e}")
 
     logging.info("BRONZE LOAD COMPLETED")
 
-# ==============================
-# SILVER BUILD
-# ==============================
+
 
 def build_silver():
     logging.info("SILVER BUILD STARTED")
@@ -122,7 +110,8 @@ def build_silver():
         "drivers.sql",
         "rides.sql",
         "payments.sql",
-        "driver_shifts.sql"
+        "driver_shifts.sql",
+        "audit.sql"
     ]
 
     try:
@@ -132,15 +121,13 @@ def build_silver():
 
         elapsed = datetime.now() - start_time
         logging.info(f"SILVER BUILD COMPLETED | TIME={elapsed}")
-        print("✅ Silver layer built successfully")
+        print("Silver layer built successfully")
 
     except Exception as e:
         logging.error(f"SILVER BUILD FAILED | ERROR={str(e)}")
-        print(f"❌ Silver build failed: {e}")
+        print(f"Silver build failed: {e}")
 
-# ==============================
-# GOLD BUILD
-# ==============================
+
 
 def build_gold():
     logging.info("GOLD BUILD STARTED")
@@ -159,24 +146,19 @@ def build_gold():
 
         elapsed = datetime.now() - start_time
         logging.info(f"GOLD BUILD COMPLETED | TIME={elapsed}")
-        print("✅ Gold layer built successfully")
+        print("Gold layer built successfully")
 
     except Exception as e:
         logging.error(f"GOLD BUILD FAILED | ERROR={str(e)}")
-        print(f"❌ Gold build failed: {e}")
+        print(f"Gold build failed: {e}")
 
-# ==============================
-# FULL PIPELINE
-# ==============================
+
 
 def run_all():
     load_bronze()
     build_silver()
     build_gold()
 
-# ==============================
-# ENTRY POINT
-# ==============================
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
